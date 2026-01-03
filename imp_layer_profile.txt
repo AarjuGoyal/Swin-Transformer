@@ -1,0 +1,118 @@
+Tutel has not been installed. To use Swin-MoE, please install Tutel; otherwise, just ignore this.
+Using device: cuda
+Run with hooks
+patch_embed.proj                                   [0.24182400107383728]
+patch_embed.norm                                   [0.24182400107383728]
+layers.0.blocks.0.norm1                            [0.24182400107383728]
+layers.0.blocks.0.attn.qkv                         [0.24182400107383728]
+layers.0.blocks.0.attn.proj                        [0.24182400107383728]
+layers.0.blocks.0.attn.proj_drop                   [0.24182400107383728]
+layers.0.blocks.0.norm2                            [0.24182400107383728]
+layers.0.blocks.0.mlp.fc1                          [0.24182400107383728]
+layers.0.blocks.0.mlp.fc2                          [0.24182400107383728]
+layers.0.blocks.1.norm1                            [0.24182400107383728]
+layers.0.blocks.1.attn.qkv                         [0.24182400107383728]
+layers.0.blocks.1.attn.proj                        [0.24182400107383728]
+layers.0.blocks.1.attn.proj_drop                   [0.24182400107383728]
+layers.0.blocks.1.norm2                            [0.24182400107383728]
+layers.0.blocks.1.mlp.fc1                          [0.24182400107383728]
+layers.0.blocks.1.mlp.fc2                          [0.24182400107383728]
+layers.0.downsample.norm                           [0.24182400107383728]
+layers.0.downsample.reduction                      [0.24182400107383728]
+layers.1.blocks.0.norm1                            [0.24182400107383728]
+layers.1.blocks.0.attn.qkv                         [0.24182400107383728]
+layers.1.blocks.0.attn.proj                        [0.24182400107383728]
+layers.1.blocks.0.attn.proj_drop                   [0.24182400107383728]
+layers.1.blocks.0.norm2                            [0.24182400107383728]
+layers.1.blocks.0.mlp.fc1                          [0.24182400107383728]
+layers.1.blocks.0.mlp.fc2                          [0.24182400107383728]
+layers.1.blocks.1.norm1                            [0.24182400107383728]
+layers.1.blocks.1.attn.qkv                         [0.24182400107383728]
+layers.1.blocks.1.attn.proj                        [0.24182400107383728]
+layers.1.blocks.1.attn.proj_drop                   [0.24182400107383728]
+layers.1.blocks.1.norm2                            [0.24182400107383728]
+layers.1.blocks.1.mlp.fc1                          [0.24182400107383728]
+layers.1.blocks.1.mlp.fc2                          [0.24182400107383728]
+layers.1.downsample.norm                           [0.24182400107383728]
+layers.1.downsample.reduction                      [0.24182400107383728]
+layers.2.blocks.0.norm1                            [0.24182400107383728]
+layers.2.blocks.0.attn.qkv                         [0.24182400107383728]
+layers.2.blocks.0.attn.proj                        [0.24182400107383728]
+layers.2.blocks.0.attn.proj_drop                   [0.24182400107383728]
+layers.2.blocks.0.norm2                            [0.24182400107383728]
+layers.2.blocks.0.mlp.fc1                          [0.24182400107383728]
+layers.2.blocks.0.mlp.fc2                          [0.24182400107383728]
+layers.2.blocks.1.norm1                            [0.24182400107383728]
+layers.2.blocks.1.attn.qkv                         [0.24182400107383728]
+layers.2.blocks.1.attn.proj                        [0.24182400107383728]
+layers.2.blocks.1.attn.proj_drop                   [0.24182400107383728]
+layers.2.blocks.1.norm2                            [0.24182400107383728]
+layers.2.blocks.1.mlp.fc1                          [0.24182400107383728]
+layers.2.blocks.1.mlp.fc2                          [0.24182400107383728]
+layers.2.blocks.2.norm1                            [0.24182400107383728]
+layers.2.blocks.2.attn.qkv                         [0.24182400107383728]
+layers.2.blocks.2.attn.proj                        [0.24182400107383728]
+layers.2.blocks.2.attn.proj_drop                   [0.24182400107383728]
+layers.2.blocks.2.norm2                            [0.24182400107383728]
+layers.2.blocks.2.mlp.fc1                          [0.24182400107383728]
+layers.2.blocks.2.mlp.fc2                          [0.24182400107383728]
+layers.2.blocks.3.norm1                            [0.24182400107383728]
+layers.2.blocks.3.attn.qkv                         [0.24182400107383728]
+layers.2.blocks.3.attn.proj                        [0.24182400107383728]
+layers.2.blocks.3.attn.proj_drop                   [0.24182400107383728]
+layers.2.blocks.3.norm2                            [0.24182400107383728]
+layers.2.blocks.3.mlp.fc1                          [0.24182400107383728]
+layers.2.blocks.3.mlp.fc2                          [0.24182400107383728]
+layers.2.blocks.4.norm1                            [0.24182400107383728]
+layers.2.blocks.4.attn.qkv                         [0.24182400107383728]
+layers.2.blocks.4.attn.proj                        [0.24182400107383728]
+layers.2.blocks.4.attn.proj_drop                   [0.24182400107383728]
+layers.2.blocks.4.norm2                            [0.24182400107383728]
+layers.2.blocks.4.mlp.fc1                          [0.24182400107383728]
+layers.2.blocks.4.mlp.fc2                          [0.24182400107383728]
+layers.2.blocks.5.norm1                            [0.24182400107383728]
+layers.2.blocks.5.attn.qkv                         [0.24182400107383728]
+layers.2.blocks.5.attn.proj                        [0.24182400107383728]
+layers.2.blocks.5.attn.proj_drop                   [0.24182400107383728]
+layers.2.blocks.5.norm2                            [0.24182400107383728]
+layers.2.blocks.5.mlp.fc1                          [0.24182400107383728]
+layers.2.blocks.5.mlp.fc2                          [0.24182400107383728]
+layers.2.downsample.norm                           [0.24182400107383728]
+layers.2.downsample.reduction                      [0.24182400107383728]
+layers.3.blocks.0.norm1                            [0.24182400107383728]
+layers.3.blocks.0.attn.qkv                         [0.24182400107383728]
+layers.3.blocks.0.attn.proj                        [0.24182400107383728]
+layers.3.blocks.0.attn.proj_drop                   [0.24182400107383728]
+layers.3.blocks.0.norm2                            [0.24182400107383728]
+layers.3.blocks.0.mlp.fc1                          [0.24182400107383728]
+layers.3.blocks.0.mlp.fc2                          [0.24182400107383728]
+layers.3.blocks.1.norm1                            [0.24182400107383728]
+layers.3.blocks.1.attn.qkv                         [0.24182400107383728]
+layers.3.blocks.1.attn.proj                        [0.24182400107383728]
+layers.3.blocks.1.attn.proj_drop                   [0.24182400107383728]
+layers.3.blocks.1.norm2                            [0.24182400107383728]
+layers.3.blocks.1.mlp.fc1                          [0.24182400107383728]
+layers.3.blocks.1.mlp.fc2                          [0.24182400107383728]
+head                                               [0.24182400107383728]
+
+======================================================================
+AGGREGATED PROFILING (Leaf Layers Only)
+======================================================================
+Layer Type                     Time (ms)       Percent   
+----------------------------------------------------------------------
+MLP FC1                             10.64          23.9%
+MLP FC2                             10.18          22.8%
+Attention QKV                        8.11          18.2%
+Attention Proj                       6.67          15.0%
+LayerNorm                            6.11          13.7%
+Patch Embed                          2.63           5.9%
+Other                                0.24           0.5%
+----------------------------------------------------------------------
+TOTAL                               44.59         100.0%
+
+======================================================================
+QUANTIZATION PRIORITY
+======================================================================
+1. MLP layers (fc1 + fc2):         20.82 ms ( 46.7%)
+2. Attention layers (qkv + proj):  14.79 ms ( 33.2%)
+3. Combined target for quantization:  35.61 ms ( 79.9%)

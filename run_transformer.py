@@ -210,7 +210,7 @@ class Profiler:
     def __exit__(self):
         self.remove_hooks()
 
-def load_swin_model():
+def load_swin_model(model_path):
     model = SwinTransformer(
         img_size=224,
         patch_size=4,
@@ -221,7 +221,7 @@ def load_swin_model():
         num_heads=[3, 6, 12, 24],
         window_size=7
     )
-    checkpoint = torch.load('swin_tiny_patch4_window7_224.pth', map_location='cuda')
+    checkpoint = torch.load(model_path, map_location='cuda')
     model.load_state_dict(checkpoint['model'])
     # model.eval()
 
@@ -252,8 +252,9 @@ def main():
     img_path = 'data/test_image/dog.jpeg'
     img = Image.open(img_path).convert('RGB')
     img_tensor = transform(img).unsqueeze(0).to(device)
-
-    model = load_swin_model()
+    
+    model_path = "swin_tiny_patch4_window7_224_22k.pth"
+    model = load_swin_model(model_path)
     Swin_Transformer_Profiler = Profiler(model=model, device=device, run_with_hooks=run_with_hooks, apply_quantization=apply_quantization)
 
     if apply_quantization == True:
