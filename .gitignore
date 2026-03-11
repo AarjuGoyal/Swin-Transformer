@@ -133,3 +133,6 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# Added data files
+original/data/tiny_imagenet_val/*

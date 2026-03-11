@@ -1,198 +1,387 @@
-# Swin Transformer
+# Swin Transformer Edge Optimization
 
-[![PWC](https://img.shields.io/endpoint.svg?url=https://paperswithcode.com/badge/swin-transformer-v2-scaling-up-capacity-and/object-detection-on-coco)](https://paperswithcode.com/sota/object-detection-on-coco?p=swin-transformer-v2-scaling-up-capacity-and)
-[![PWC](https://img.shields.io/endpoint.svg?url=https://paperswithcode.com/badge/swin-transformer-v2-scaling-up-capacity-and/instance-segmentation-on-coco)](https://paperswithcode.com/sota/instance-segmentation-on-coco?p=swin-transformer-v2-scaling-up-capacity-and)
-[![PWC](https://img.shields.io/endpoint.svg?url=https://paperswithcode.com/badge/swin-transformer-v2-scaling-up-capacity-and/semantic-segmentation-on-ade20k)](https://paperswithcode.com/sota/semantic-segmentation-on-ade20k?p=swin-transformer-v2-scaling-up-capacity-and)
-[![PWC](https://img.shields.io/endpoint.svg?url=https://paperswithcode.com/badge/swin-transformer-v2-scaling-up-capacity-and/action-classification-on-kinetics-400)](https://paperswithcode.com/sota/action-classification-on-kinetics-400?p=swin-transformer-v2-scaling-up-capacity-and)
+Systematic optimization of Swin Transformer achieving **4.1x inference speedup** (32ms → 7.73ms) on NVIDIA Jetson Orin through profiling-guided optimization, TensorRT conversion, and INT8 quantization.
 
-This repo is the official implementation of ["Swin Transformer: Hierarchical Vision Transformer using Shifted Windows"](https://arxiv.org/pdf/2103.14030.pdf) as well as the follow-ups. It currently includes code and models for the following tasks:
+!["Performance_Comparison"](./edge_optimization/results/swin_performance_comparison.png)
+## 🎯 Results Summary
 
-> **Image Classification**: Included in this repo. See [get_started.md](get_started.md) for a quick start.
+| Configuration | Latency | Speedup | Throughput | Model Size |
+|--------------|---------|---------|------------|------------|
+| PyTorch FP32 | 32.0 ms | 1.0x | 31.3 FPS | 110 MB |
+| TensorRT FP32 | 9.07 ms | 3.5x | 110.3 FPS | 14.9 MB |
+| TensorRT INT8 | 7.73 ms | **4.1x** | **129.4 FPS** | **28 MB** |
 
-> **Object Detection and Instance Segmentation**: See [Swin Transformer for Object Detection](https://github.com/SwinTransformer/Swin-Transformer-Object-Detection).
+**Key Achievements:**
+- ⚡ 4.1x inference speedup enables real-time perception
+- 📦 4x model compression (110MB → 28MB)
+- 🎯 129 FPS throughput (real-time capable for 60+ Hz systems)
+- 🔬 Memory bandwidth bottleneck identified and analyzed
 
-> **Semantic Segmentation**: See [Swin Transformer for Semantic Segmentation](https://github.com/SwinTransformer/Swin-Transformer-Semantic-Segmentation).
+---
 
-> **Video Action Recognition**: See [Video Swin Transformer](https://github.com/SwinTransformer/Video-Swin-Transformer).
+## 📋 Table of Contents
 
-> **Semi-Supervised Object Detection**: See [Soft Teacher](https://github.com/microsoft/SoftTeacher).
+- [Motivation](#motivation)
+- [Methodology](#methodology)
+- [Profiling & Analysis](#profiling--analysis)
+- [Optimization Pipeline](#optimization-pipeline)
+- [Results](#results)
+- [Key Findings](#key-findings)
+- [Repository Structure](#repository-structure)
+- [Quick Start](#quick-start)
+- [Technologies](#technologies)
 
-> **SSL: Contrasitive Learning**: See [Transformer-SSL](https://github.com/SwinTransformer/Transformer-SSL).
+---
 
-> **SSL: Masked Image Modeling**: See [get_started.md#simmim-support](https://github.com/microsoft/Swin-Transformer/blob/main/get_started.md#simmim-support).
+## 🎯 Motivation
 
-> **Mixture-of-Experts**: See [get_started](get_started.md#mixture-of-experts-support) for more instructions.
+Vision-Language-Action (VLA) models are becoming critical for autonomous systems, requiring efficient vision encoding for real-time performance. This project systematically evaluates and optimizes the vision encoding component of VLA frameworks to identify performance bottlenecks and optimization opportunities for deployment on NVIDIA Jetson Orin.
 
-> **Feature-Distillation**: See [Feature-Distillation](https://github.com/SwinTransformer/Feature-Distillation).
+**Why Swin Transformer?**
+1. **Industry adoption:** Widely used in autonomous driving perception (BEVFormer, PETR, BEVDet)
+2. **Transformer architecture:** Self-attention mechanisms represent core building blocks of modern VLA models
+3. **Edge deployment relevance:** Hierarchical design suitable for resource-constrained devices
 
-## Updates
+---
 
-***12/29/2022***
+## 🔬 Methodology
 
-1. **Nvidia**'s [FasterTransformer](https://github.com/NVIDIA/FasterTransformer/blob/main/docs/swin_guide.md) now supports Swin Transformer V2 inference, which have significant speed improvements on `T4 and A100 GPUs`.
+### 1. Baseline Measurement
+**Setup:**
+- Model: Swin-Tiny (smallest variant for edge deployment)
+- Platform: NVIDIA Jetson Orin
+- Input: 224×224×3 RGB images
+- Framework: PyTorch with CUDA
 
-***11/30/2022***
-
-1. Models and codes of **Feature Distillation** are released. Please refer to [Feature-Distillation](https://github.com/SwinTransformer/Feature-Distillation) for details, and the checkpoints (FD-EsViT-Swin-B, FD-DeiT-ViT-B, FD-DINO-ViT-B, FD-CLIP-ViT-B, FD-CLIP-ViT-L).
-
-***09/24/2022***
-
-1. Merged [SimMIM](https://github.com/microsoft/SimMIM), which is a **Masked Image Modeling** based pre-training approach applicable to Swin and SwinV2 (and also applicable for ViT and ResNet). Please refer to [get started with SimMIM](get_started.md#simmim-support) to play with SimMIM pre-training.
-
-2. Released a series of Swin and SwinV2 models pre-trained using the SimMIM approach (see [MODELHUB for SimMIM](MODELHUB.md#simmim-pretrained-swin-v2-models)), with model size ranging from SwinV2-Small-50M to SwinV2-giant-1B, data size ranging from ImageNet-1K-10% to ImageNet-22K, and iterations from 125k to 500k. You may leverage these models to study the properties of MIM methods. Please look into the [data scaling](https://arxiv.org/abs/2206.04664) paper for more details.
-
-***07/09/2022***
-
-`News`: 
-
-1. SwinV2-G achieves `61.4 mIoU` on ADE20K semantic segmentation (+1.5 mIoU over the previous SwinV2-G model), using an additional [feature distillation (FD)](https://github.com/SwinTransformer/Feature-Distillation) approach, **setting a new recrod** on this benchmark. FD is an approach that can generally improve the fine-tuning performance of various pre-trained models, including DeiT, DINO, and CLIP. Particularly, it improves CLIP pre-trained ViT-L by +1.6% to reach `89.0%` on ImageNet-1K image classification, which is **the most accurate ViT-L model**.
-2. Merged a PR from **Nvidia** that links to faster Swin Transformer inference that have significant speed improvements on `T4 and A100 GPUs`.
-3. Merged a PR from **Nvidia** that enables an option to use `pure FP16 (Apex O2)` in training, while almost maintaining the accuracy.
-
-***06/03/2022***
-
-1. Added **Swin-MoE**, the Mixture-of-Experts variant of Swin Transformer implemented using [Tutel](https://github.com/microsoft/tutel) (an optimized Mixture-of-Experts implementation). **Swin-MoE** is introduced in the [TuTel](https://arxiv.org/abs/2206.03382) paper.
-
-***05/12/2022***
-
-1. Pretrained models of [Swin Transformer V2](https://arxiv.org/abs/2111.09883) on ImageNet-1K and ImageNet-22K are released. 
-2. ImageNet-22K pretrained models for Swin-V1-Tiny and Swin-V2-Small are released.
-
-***03/02/2022***
-
-1. Swin Transformer V2 and SimMIM got accepted by CVPR 2022. [SimMIM](https://github.com/microsoft/SimMIM) is a self-supervised pre-training approach based on masked image modeling, a key technique that works out the 3-billion-parameter Swin V2 model using `40x less labelled data` than that of previous billion-scale models based on JFT-3B. 
-
-***02/09/2022***
-
-1. Integrated into [Huggingface Spaces 🤗](https://huggingface.co/spaces) using [Gradio](https://github.com/gradio-app/gradio). Try out the Web Demo [![Hugging Face Spaces](https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-Spaces-blue)](https://huggingface.co/spaces/akhaliq/Swin-Transformer)
-
-***10/12/2021***
-
-1. Swin Transformer received ICCV 2021 best paper award (Marr Prize).
-
-***08/09/2021***
-1. [Soft Teacher](https://arxiv.org/pdf/2106.09018v2.pdf) will appear at ICCV2021. The code will be released at [GitHub Repo](https://github.com/microsoft/SoftTeacher). `Soft Teacher` is an end-to-end semi-supervisd object detection method, achieving a new record on the COCO test-dev: `61.3 box AP` and `53.0 mask AP`.
- 
-***07/03/2021***
-1. Add **Swin MLP**, which is an adaption of `Swin Transformer` by replacing all multi-head self-attention (MHSA) blocks by MLP layers (more precisely it is a group linear layer). The shifted window configuration can also significantly improve the performance of vanilla MLP architectures. 
-
-***06/25/2021***
-1. [Video Swin Transformer](https://arxiv.org/abs/2106.13230) is released at [Video-Swin-Transformer](https://github.com/SwinTransformer/Video-Swin-Transformer).
-`Video Swin Transformer` achieves state-of-the-art accuracy on a broad range of video recognition benchmarks, including action recognition (`84.9` top-1 accuracy on Kinetics-400 and `86.1` top-1 accuracy on Kinetics-600 with `~20x` less pre-training data and `~3x` smaller model size) and temporal modeling (`69.6` top-1 accuracy on Something-Something v2).
-
-***05/12/2021***
-1. Used as a backbone for `Self-Supervised Learning`: [Transformer-SSL](https://github.com/SwinTransformer/Transformer-SSL)
-
-Using Swin-Transformer as the backbone for self-supervised learning enables us to evaluate the transferring performance of the learnt representations on down-stream tasks, which is missing in previous works due to the use of ViT/DeiT, which has not been well tamed for down-stream tasks.
-
-***04/12/2021***
-
-Initial commits:
-
-1. Pretrained models on ImageNet-1K ([Swin-T-IN1K](https://github.com/SwinTransformer/storage/releases/download/v1.0.0/swin_tiny_patch4_window7_224.pth), [Swin-S-IN1K](https://github.com/SwinTransformer/storage/releases/download/v1.0.0/swin_small_patch4_window7_224.pth), [Swin-B-IN1K](https://github.com/SwinTransformer/storage/releases/download/v1.0.0/swin_base_patch4_window7_224.pth)) and ImageNet-22K ([Swin-B-IN22K](https://github.com/SwinTransformer/storage/releases/download/v1.0.0/swin_base_patch4_window7_224_22k.pth), [Swin-L-IN22K](https://github.com/SwinTransformer/storage/releases/download/v1.0.0/swin_large_patch4_window7_224_22k.pth)) are provided.
-2. The supported code and models for ImageNet-1K image classification, COCO object detection and ADE20K semantic segmentation are provided.
-3. The cuda kernel implementation for the [local relation layer](https://arxiv.org/pdf/1904.11491.pdf) is provided in branch [LR-Net](https://github.com/microsoft/Swin-Transformer/tree/LR-Net).
-
-## Introduction
-
-**Swin Transformer** (the name `Swin` stands for **S**hifted **win**dow) is initially described in [arxiv](https://arxiv.org/abs/2103.14030), which capably serves as a
-general-purpose backbone for computer vision. It is basically a hierarchical Transformer whose representation is
-computed with shifted windows. The shifted windowing scheme brings greater efficiency by limiting self-attention
-computation to non-overlapping local windows while also allowing for cross-window connection.
-
-Swin Transformer achieves strong performance on COCO object detection (`58.7 box AP` and `51.1 mask AP` on test-dev) and
-ADE20K semantic segmentation (`53.5 mIoU` on val), surpassing previous models by a large margin.
-
-![teaser](figures/teaser.png)
-
-## Main Results on ImageNet with Pretrained Models
-
-**ImageNet-1K and ImageNet-22K Pretrained Swin-V1 Models**
-
-| name | pretrain | resolution |acc@1 | acc@5 | #params | FLOPs | FPS| 22K model | 1K model |
-| :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |:---: |:---: |
-| Swin-T | ImageNet-1K | 224x224 | 81.2 | 95.5 | 28M | 4.5G | 755 | - | [github](https://github.com/SwinTransformer/storage/releases/download/v1.0.0/swin_tiny_patch4_window7_224.pth)/[baidu](https://pan.baidu.com/s/156nWJy4Q28rDlrX-rRbI3w)/[config](configs/swin/swin_tiny_patch4_window7_224.yaml)/[log](https://github.com/SwinTransformer/storage/files/7745562/log_swin_tiny_patch4_window7_224.txt) |
-| Swin-S | ImageNet-1K | 224x224 | 83.2 | 96.2 | 50M | 8.7G | 437 | - | [github](https://github.com/SwinTransformer/storage/releases/download/v1.0.0/swin_small_patch4_window7_224.pth)/[baidu](https://pan.baidu.com/s/1KFjpj3Efey3LmtE1QqPeQg)/[config](configs/swin/swin_small_patch4_window7_224.yaml)/[log](https://github.com/SwinTransformer/storage/files/7745563/log_swin_small_patch4_window7_224.txt) |
-| Swin-B | ImageNet-1K | 224x224 | 83.5 | 96.5 | 88M | 15.4G | 278  | - | [github](https://github.com/SwinTransformer/storage/releases/download/v1.0.0/swin_base_patch4_window7_224.pth)/[baidu](https://pan.baidu.com/s/16bqCTEc70nC_isSsgBSaqQ)/[config](configs/swin/swin_base_patch4_window7_224.yaml)/[log](https://github.com/SwinTransformer/storage/files/7745564/log_swin_base_patch4_window7_224.txt) |
-| Swin-B | ImageNet-1K | 384x384 | 84.5 | 97.0 | 88M | 47.1G | 85 | - | [github](https://github.com/SwinTransformer/storage/releases/download/v1.0.0/swin_base_patch4_window12_384.pth)/[baidu](https://pan.baidu.com/s/1xT1cu740-ejW7htUdVLnmw)/[config](configs/swin/swin_base_patch4_window12_384_finetune.yaml) |
-| Swin-T | ImageNet-22K | 224x224 | 80.9 | 96.0 | 28M | 4.5G | 755 | [github](https://github.com/SwinTransformer/storage/releases/download/v1.0.8/swin_tiny_patch4_window7_224_22k.pth)/[baidu](https://pan.baidu.com/s/1vct0VYwwQQ8PYkBjwSSBZQ?pwd=swin)/[config](configs/swin/swin_tiny_patch4_window7_224_22k.yaml) | [github](https://github.com/SwinTransformer/storage/releases/download/v1.0.8/swin_tiny_patch4_window7_224_22kto1k_finetune.pth)/[baidu](https://pan.baidu.com/s/1K0OO-nGZDPkR8fm_r83e8Q?pwd=swin)/[config](configs/swin/swin_tiny_patch4_window7_224_22kto1k_finetune.yaml) |
-| Swin-S | ImageNet-22K | 224x224 | 83.2 | 97.0 | 50M | 8.7G | 437 | [github](https://github.com/SwinTransformer/storage/releases/download/v1.0.8/swin_small_patch4_window7_224_22k.pth)/[baidu](https://pan.baidu.com/s/11NC1xdT5BAGBgazdTme5Sg?pwd=swin)/[config](configs/swin/swin_small_patch4_window7_224_22k.yaml) | [github](https://github.com/SwinTransformer/storage/releases/download/v1.0.8/swin_small_patch4_window7_224_22kto1k_finetune.pth)/[baidu](https://pan.baidu.com/s/10RFVfjQJhwPfeHrmxQUaLw?pwd=swin)/[config](configs/swin/swin_small_patch4_window7_224_22kto1k_finetune.yaml) |
-| Swin-B | ImageNet-22K | 224x224 | 85.2 | 97.5 | 88M | 15.4G | 278 | [github](https://github.com/SwinTransformer/storage/releases/download/v1.0.0/swin_base_patch4_window7_224_22k.pth)/[baidu](https://pan.baidu.com/s/1y1Ec3UlrKSI8IMtEs-oBXA)/[config](configs/swin/swin_base_patch4_window7_224_22k.yaml) | [github](https://github.com/SwinTransformer/storage/releases/download/v1.0.0/swin_base_patch4_window7_224_22kto1k.pth)/[baidu](https://pan.baidu.com/s/1n_wNkcbRxVXit8r_KrfAVg)/[config](configs/swin/swin_base_patch4_window7_224_22kto1k_finetune.yaml) |
-| Swin-B | ImageNet-22K | 384x384 | 86.4 | 98.0 | 88M | 47.1G | 85 | [github](https://github.com/SwinTransformer/storage/releases/download/v1.0.0/swin_base_patch4_window12_384_22k.pth)/[baidu](https://pan.baidu.com/s/1vwJxnJcVqcLZAw9HaqiR6g) | [github](https://github.com/SwinTransformer/storage/releases/download/v1.0.0/swin_base_patch4_window12_384_22kto1k.pth)/[baidu](https://pan.baidu.com/s/1caKTSdoLJYoi4WBcnmWuWg)/[config](configs/swin/swin_base_patch4_window12_384_22kto1k_finetune.yaml) |
-| Swin-L | ImageNet-22K | 224x224 | 86.3 | 97.9 | 197M | 34.5G | 141 | [github](https://github.com/SwinTransformer/storage/releases/download/v1.0.0/swin_large_patch4_window7_224_22k.pth)/[baidu](https://pan.baidu.com/s/1pws3rOTFuOebBYP3h6Kx8w)/[config](configs/swin/swin_large_patch4_window7_224_22k.yaml) | [github](https://github.com/SwinTransformer/storage/releases/download/v1.0.0/swin_large_patch4_window7_224_22kto1k.pth)/[baidu](https://pan.baidu.com/s/1NkQApMWUhxBGjk1ne6VqBQ)/[config](configs/swin/swin_large_patch4_window7_224_22kto1k_finetune.yaml) |
-| Swin-L | ImageNet-22K | 384x384 | 87.3 | 98.2 | 197M | 103.9G | 42 | [github](https://github.com/SwinTransformer/storage/releases/download/v1.0.0/swin_large_patch4_window12_384_22k.pth)/[baidu](https://pan.baidu.com/s/1sl7o_bJA143OD7UqSLAMoA) | [github](https://github.com/SwinTransformer/storage/releases/download/v1.0.0/swin_large_patch4_window12_384_22kto1k.pth)/[baidu](https://pan.baidu.com/s/1X0FLHQyPOC6Kmv2CmgxJvA)/[config](configs/swin/swin_large_patch4_window12_384_22kto1k_finetune.yaml) |
-
-**ImageNet-1K and ImageNet-22K Pretrained Swin-V2 Models**
-
-| name | pretrain | resolution | window |acc@1 | acc@5 | #params | FLOPs | FPS |22K model | 1K model |
-|:---------------------:| :---: | :---: | :---: | :---: | :---: | :---: | :---: |:---:|:---: |:---: |
-| SwinV2-T | ImageNet-1K | 256x256 | 8x8 | 81.8 | 95.9 | 28M | 5.9G | 572 | - | [github](https://github.com/SwinTransformer/storage/releases/download/v2.0.0/swinv2_tiny_patch4_window8_256.pth)/[baidu](https://pan.baidu.com/s/1RzLkAH_5OtfRCJe6Vlg6rg?pwd=swin)/[config](configs/swinv2/swinv2_tiny_patch4_window8_256.yaml) |
-| SwinV2-S | ImageNet-1K | 256x256 | 8x8 | 83.7 | 96.6 | 50M | 11.5G | 327 | - | [github](https://github.com/SwinTransformer/storage/releases/download/v2.0.0/swinv2_small_patch4_window8_256.pth)/[baidu](https://pan.baidu.com/s/195PdA41szEduW3jEtRSa4Q?pwd=swin)/[config](configs/swinv2/swinv2_small_patch4_window8_256.yaml) |
-| SwinV2-B | ImageNet-1K | 256x256 | 8x8 | 84.2 | 96.9 | 88M | 20.3G | 217 | - | [github](https://github.com/SwinTransformer/storage/releases/download/v2.0.0/swinv2_base_patch4_window8_256.pth)/[baidu](https://pan.baidu.com/s/18AfMSz3dPyzIvP1dKuERvQ?pwd=swin)/[config](configs/swinv2/swinv2_base_patch4_window8_256.yaml) |
-| SwinV2-T | ImageNet-1K | 256x256 | 16x16 | 82.8 | 96.2 | 28M | 6.6G | 437 | - | [github](https://github.com/SwinTransformer/storage/releases/download/v2.0.0/swinv2_tiny_patch4_window16_256.pth)/[baidu](https://pan.baidu.com/s/1dyK3cK9Xipmv6RnTtrPocw?pwd=swin)/[config](configs/swinv2/swinv2_tiny_patch4_window16_256.yaml) |
-| SwinV2-S | ImageNet-1K | 256x256 | 16x16 | 84.1 | 96.8 | 50M | 12.6G  | 257 | - | [github](https://github.com/SwinTransformer/storage/releases/download/v2.0.0/swinv2_small_patch4_window16_256.pth)/[baidu](https://pan.baidu.com/s/1ZIPiSfWNKTPp821Ka-Mifw?pwd=swin)/[config](configs/swinv2/swinv2_small_patch4_window16_256.yaml) |
-| SwinV2-B | ImageNet-1K | 256x256 | 16x16 | 84.6 | 97.0 | 88M | 21.8G | 174 | - | [github](https://github.com/SwinTransformer/storage/releases/download/v2.0.0/swinv2_base_patch4_window16_256.pth)/[baidu](https://pan.baidu.com/s/1dlDQGn8BXCmnh7wQSM5Nhw?pwd=swin)/[config](configs/swinv2/swinv2_base_patch4_window16_256.yaml) |
-| SwinV2-B<sup>\*</sup> | ImageNet-22K | 256x256 | 16x16 | 86.2 | 97.9 |  88M | 21.8G | 174 | [github](https://github.com/SwinTransformer/storage/releases/download/v2.0.0/swinv2_base_patch4_window12_192_22k.pth)/[baidu](https://pan.baidu.com/s/1Xc2rsSsRQz_sy5mjgfxrMQ?pwd=swin)/[config](configs/swinv2/swinv2_base_patch4_window12_192_22k.yaml) | [github](https://github.com/SwinTransformer/storage/releases/download/v2.0.0/swinv2_base_patch4_window12to16_192to256_22kto1k_ft.pth)/[baidu](https://pan.baidu.com/s/1sgstld4MgGsZxhUAW7MlmQ?pwd=swin)/[config](configs/swinv2/swinv2_base_patch4_window12to16_192to256_22kto1k_ft.yaml) |
-| SwinV2-B<sup>\*</sup> | ImageNet-22K | 384x384 | 24x24 | 87.1 | 98.2 | 88M | 54.7G | 57  | [github](https://github.com/SwinTransformer/storage/releases/download/v2.0.0/swinv2_base_patch4_window12_192_22k.pth)/[baidu](https://pan.baidu.com/s/1Xc2rsSsRQz_sy5mjgfxrMQ?pwd=swin)/[config](configs/swinv2/swinv2_base_patch4_window12_192_22k.yaml) | [github](https://github.com/SwinTransformer/storage/releases/download/v2.0.0/swinv2_base_patch4_window12to24_192to384_22kto1k_ft.pth)/[baidu](https://pan.baidu.com/s/17u3sEQaUYlvfL195rrORzQ?pwd=swin)/[config](configs/swinv2/swinv2_base_patch4_window12to24_192to384_22kto1k_ft.yaml) |
-| SwinV2-L<sup>\*</sup> | ImageNet-22K | 256x256 | 16x16 | 86.9 | 98.0 | 197M | 47.5G | 95  | [github](https://github.com/SwinTransformer/storage/releases/download/v2.0.0/swinv2_large_patch4_window12_192_22k.pth)/[baidu](https://pan.baidu.com/s/11PhCV7qAGXtZ8dXNgyiGOw?pwd=swin)/[config](configs/swinv2/swinv2_large_patch4_window12_192_22k.yaml) | [github](https://github.com/SwinTransformer/storage/releases/download/v2.0.0/swinv2_large_patch4_window12to16_192to256_22kto1k_ft.pth)/[baidu](https://pan.baidu.com/s/1pqp31N80qIWjFPbudzB6Bw?pwd=swin)/[config](configs/swinv2/swinv2_large_patch4_window12to16_192to256_22kto1k_ft.yaml) |
-| SwinV2-L<sup>\*</sup> | ImageNet-22K | 384x384 | 24x24 | 87.6 | 98.3 | 197M | 115.4G | 33  | [github](https://github.com/SwinTransformer/storage/releases/download/v2.0.0/swinv2_large_patch4_window12_192_22k.pth)/[baidu](https://pan.baidu.com/s/11PhCV7qAGXtZ8dXNgyiGOw?pwd=swin)/[config](configs/swinv2/swinv2_large_patch4_window12_192_22k.yaml) | [github](https://github.com/SwinTransformer/storage/releases/download/v2.0.0/swinv2_large_patch4_window12to24_192to384_22kto1k_ft.pth)/[baidu](https://pan.baidu.com/s/13URdNkygr3Xn0N3e6IwjgA?pwd=swin)/[config](configs/swinv2/swinv2_large_patch4_window12to24_192to384_22kto1k_ft.yaml) |
-
-Note: 
-- SwinV2-B<sup>\*</sup>  (SwinV2-L<sup>\*</sup>) with input resolution of 256x256 and 384x384 both fine-tuned from the same pre-training model using a smaller input resolution of 192x192.
-- SwinV2-B<sup>\*</sup> (384x384) achieves 78.08 acc@1 on ImageNet-1K-V2 while SwinV2-L<sup>\*</sup> (384x384) achieves 78.31.
-
-**ImageNet-1K Pretrained Swin MLP Models**
-
-| name | pretrain | resolution |acc@1 | acc@5 | #params | FLOPs | FPS |  1K model |
-| :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| [Mixer-B/16](https://arxiv.org/pdf/2105.01601.pdf) | ImageNet-1K | 224x224 | 76.4 | - | 59M | 12.7G | - | [official repo](https://github.com/google-research/vision_transformer) |
-| [ResMLP-S24](https://arxiv.org/abs/2105.03404) | ImageNet-1K | 224x224 | 79.4 | - | 30M | 6.0G | 715 | [timm](https://github.com/rwightman/pytorch-image-models) |
-| [ResMLP-B24](https://arxiv.org/abs/2105.03404) | ImageNet-1K | 224x224 | 81.0 | - | 116M | 23.0G |  231 | [timm](https://github.com/rwightman/pytorch-image-models) |
-| Swin-T/C24 | ImageNet-1K | 256x256 | 81.6 | 95.7 | 28M | 5.9G | 563 | [github](https://github.com/SwinTransformer/storage/releases/download/v1.0.5/swin_tiny_c24_patch4_window8_256.pth)/[baidu](https://pan.baidu.com/s/17k-7l6Sxt7uZ7IV0f26GNQ)/[config](configs/swin/swin_tiny_c24_patch4_window8_256.yaml) |
-| SwinMLP-T/C24 | ImageNet-1K | 256x256 | 79.4 | 94.6 | 20M | 4.0G | 807 | [github](https://github.com/SwinTransformer/storage/releases/download/v1.0.5/swin_mlp_tiny_c24_patch4_window8_256.pth)/[baidu](https://pan.baidu.com/s/1Sa4vP5R0M2RjfIe9HIga-Q)/[config](configs/swin/swin_mlp_tiny_c24_patch4_window8_256.yaml) |
-| SwinMLP-T/C12 | ImageNet-1K | 256x256 | 79.6 | 94.7 | 21M | 4.0G | 792 | [github](https://github.com/SwinTransformer/storage/releases/download/v1.0.5/swin_mlp_tiny_c12_patch4_window8_256.pth)/[baidu](https://pan.baidu.com/s/1mM9J2_DEVZHUB5ASIpFl0w)/[config](configs/swin/swin_mlp_tiny_c12_patch4_window8_256.yaml) |
-| SwinMLP-T/C6 | ImageNet-1K | 256x256 | 79.7 | 94.9 | 23M | 4.0G | 766 | [github](https://github.com/SwinTransformer/storage/releases/download/v1.0.5/swin_mlp_tiny_c6_patch4_window8_256.pth)/[baidu](https://pan.baidu.com/s/1hUTYVT2W1CsjICw-3W-Vjg)/[config](configs/swin/swin_mlp_tiny_c6_patch4_window8_256.yaml) |
-| SwinMLP-B | ImageNet-1K | 224x224 | 81.3 | 95.3 | 61M | 10.4G | 409 | [github](https://github.com/SwinTransformer/storage/releases/download/v1.0.5/swin_mlp_base_patch4_window7_224.pth)/[baidu](https://pan.baidu.com/s/1zww3dnbX3GxNiGfb-GwyUg)/[config](configs/swin/swin_mlp_base_patch4_window7_224.yaml) |
-
-Note: access code for `baidu` is `swin`. C24 means each head has 24 channels.
-
-**ImageNet-22K Pretrained Swin-MoE Models**
-
-- Please refer to [get_started](get_started.md#mixture-of-experts-support) for instructions on running Swin-MoE. 
-- Pretrained models for Swin-MoE can be found in [MODEL HUB](MODELHUB.md#imagenet-22k-pretrained-swin-moe-models)
-
-## Main Results on Downstream Tasks
-
-**COCO Object Detection (2017 val)**
-
-| Backbone | Method | pretrain | Lr Schd | box mAP | mask mAP | #params | FLOPs |
-| :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| Swin-T | Mask R-CNN | ImageNet-1K | 3x | 46.0 | 41.6 | 48M | 267G |
-| Swin-S | Mask R-CNN | ImageNet-1K | 3x | 48.5 | 43.3 | 69M | 359G |
-| Swin-T | Cascade Mask R-CNN | ImageNet-1K | 3x | 50.4 | 43.7 | 86M | 745G |
-| Swin-S | Cascade Mask R-CNN | ImageNet-1K |  3x | 51.9 | 45.0 | 107M | 838G |
-| Swin-B | Cascade Mask R-CNN | ImageNet-1K |  3x | 51.9 | 45.0 | 145M | 982G |
-| Swin-T | RepPoints V2 | ImageNet-1K | 3x | 50.0 | - | 45M | 283G |
-| Swin-T | Mask RepPoints V2 | ImageNet-1K | 3x | 50.3 | 43.6 | 47M | 292G |
-| Swin-B | HTC++ | ImageNet-22K | 6x | 56.4 | 49.1 | 160M | 1043G |
-| Swin-L | HTC++ | ImageNet-22K | 3x | 57.1 | 49.5 | 284M | 1470G |
-| Swin-L | HTC++<sup>*</sup> | ImageNet-22K | 3x | 58.0 | 50.4 | 284M | - |
-
-Note: <sup>*</sup> indicates multi-scale testing.
-
-**ADE20K Semantic Segmentation (val)**
-
-| Backbone | Method | pretrain | Crop Size | Lr Schd | mIoU | mIoU (ms+flip) | #params | FLOPs |
-| :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| Swin-T | UPerNet | ImageNet-1K | 512x512 | 160K | 44.51 | 45.81 | 60M | 945G |
-| Swin-S | UperNet | ImageNet-1K | 512x512 | 160K | 47.64 | 49.47 | 81M | 1038G |
-| Swin-B | UperNet | ImageNet-1K | 512x512 | 160K | 48.13 | 49.72 | 121M | 1188G |
-| Swin-B | UPerNet | ImageNet-22K | 640x640 | 160K | 50.04 | 51.66 | 121M | 1841G |
-| Swin-L | UperNet | ImageNet-22K | 640x640 | 160K | 52.05 | 53.53 | 234M | 3230G |
-
-## Citing Swin Transformer
-
+**Baseline Results:**
 ```
+PyTorch FP32 GPU: 32.0 ms per image (31.3 FPS)
+```
+
+**Initial Observation:** Too slow for real-time perception (need <15ms for 60Hz)
+
+### 2. Profiling & Bottleneck Analysis
+
+**Two-level profiling approach:**
+
+#### GPU-Level Profiling (Nsight Systems)
+- Captured end-to-end inference execution
+- Identified GEMM (matrix multiplication) operations as primary GPU workload
+- Confirmed compute-bound behavior (minimal idle time)
+
+#### Layer-Wise Profiling (Custom CUDA Events)
+- Implemented timing hooks for each layer type
+- Measured time distribution across operations
+
+**Key Finding:** **87% of inference time in Linear layers** (MLP + Attention projections)
+
+| Layer Type | Time (ms) | Percentage | Quantizable? |
+|------------|-----------|------------|--------------|
+| MLP FC1 (Expand) | 23.19 | 27.5% | ✅ |
+| MLP FC2 (Project) | 23.30 | 27.6% | ✅ |
+| Attention QKV | 17.67 | 21.0% | ✅ |
+| Attention Proj | 9.55 | 11.3% | ✅ |
+| LayerNorm | 5.45 | 6.5% | ❌ |
+| Patch Embed | 4.77 | 5.7% | ✅ |
+| Other | 0.39 | 0.5% | - |
+
+**Critical Insight:** Matrix multiplication operations in MLP and Attention are the bottleneck → quantization and graph optimization should be effective.
+
+!["Layer_profile](./edge_optimization/results/layer_profile_bar.png)
+<p align="center">
+  <img src="edge-optimization/results/layer_profile_bar.png" alt="Results" width="800"/>
+</p>
+
+---
+
+## ⚙️ Optimization Pipeline
+
+### Stage 1: PyTorch Quantization Exploration
+
+**Approach:** Applied PyTorch dynamic quantization (INT8) to Linear layers
+
+**Results:**
+| Configuration | Device | Latency | Notes |
+|--------------|--------|---------|-------|
+| FP32 | GPU | 32.0 ms | Baseline |
+| FP32 | CPU | 578 ms | Reference |
+| INT8 | CPU | 442 ms | 1.31x vs CPU FP32 |
+
+**Learning:** PyTorch quantization only works on CPU (not GPU-accelerated). Need TensorRT for GPU INT8.
+
+**Decision:** Skip PyTorch quantization → proceed directly to TensorRT
+
+### Stage 2: TensorRT Graph Optimization
+
+**Approach:**
+1. Export PyTorch model to ONNX (opset 17)
+2. Convert ONNX to TensorRT engine with graph optimization
+3. Benchmark on Jetson Orin
+
+**TensorRT Optimizations Applied:**
+- Kernel fusion (combine multiple ops)
+- Memory layout optimization
+- Constant folding
+- Dead code elimination
+
+**Results:**
+```
+PyTorch FP32:   32.0 ms (baseline)
+TensorRT FP32:   9.07 ms (3.5x speedup)
+```
+
+**Impact:** Graph optimization alone provided 3.5x speedup!
+
+### Stage 3: INT8 Quantization
+
+**Approach:**
+- Applied calibration-based INT8 quantization
+- TensorRT automatically determines optimal quantization scales
+- GPU-native INT8 Tensor Core acceleration
+
+**Results:**
+```
+TensorRT FP32:  9.07 ms
+TensorRT INT8:  7.73 ms (1.17x additional speedup)
+```
+
+**Total Speedup:** 32.0ms → 7.73ms = **4.1x overall**
+
+### Stage 4: Batch Processing Analysis
+
+**Motivation:** Real-world systems may process multiple images (multi-camera feeds, batched inference)
+
+**Results:**
+
+| Batch Size | FP32 Total | INT8 Total | Per-Image (INT8) | Throughput | INT8 Speedup |
+|-----------|------------|------------|------------------|------------|--------------|
+| 1 | 9.07 ms | 7.73 ms | 7.73 ms | 129.4 FPS | 1.17x |
+| 4 | 25.72 ms | 23.82 ms | 5.96 ms | 167.9 FPS | 1.08x |
+| 8 | 48.37 ms | 46.77 ms | 5.85 ms | 171.1 FPS | 1.03x |
+
+**Observations:**
+- ✅ Batch processing improves per-image throughput by 24%
+- ⚠️ INT8 speedup **decreases** with larger batches (1.17x → 1.03x)
+
+**Root Cause:** Memory bandwidth bottleneck
+- Larger batches = more data movement
+- Memory bandwidth becomes limiting factor
+- INT8 compute advantage diminished by memory constraints
+
+---
+
+## Results
+
+### Performance Summary
+
+<table>
+<tr>
+<td>
+
+**Latency Reduction**
+- Baseline: 32.0 ms
+- Optimized: 7.73 ms
+- **Improvement: 4.1x**
+
+</td>
+<td>
+
+**Throughput Increase**
+- Baseline: 31.3 FPS
+- Optimized: 129.4 FPS
+- **Improvement: 4.1x**
+
+</td>
+</tr>
+<tr>
+<td>
+
+**Model Compression**
+- FP32 PyTorch: 110 MB
+- INT8 PyTorch: 28 MB
+- **Compression: 4x**
+
+</td>
+<td>
+
+**TensorRT Engine**
+- FP32 Engine: 14.9 MB
+- INT8 Engine: 13.2 MB
+- **Compression: 8.3x**
+
+</td>
+</tr>
+</table>
+
+### Detailed Performance Breakdown
+
+See [edge-optimization/results/](edge-optimization/results/) for:
+- Complete performance comparison charts
+- Nsight Systems profiling visualizations
+- Layer-wise timing breakdowns
+- Batch processing analysis
+- Memory bandwidth analysis
+
+---
+
+## 🔑 Key Findings
+
+### 1. Graph Optimization > Quantization on Edge Devices
+
+**TensorRT graph optimization: 3.5x speedup**
+- Kernel fusion and memory layout optimization
+- Significantly more impactful than quantization alone
+
+**INT8 quantization: 1.17x additional speedup**
+- Still valuable but secondary to graph optimization
+- Limited by memory bandwidth on edge hardware
+
+**Lesson:** Tool selection and graph-level optimization matter more than low-level manual tuning
+
+### 2. Memory Bandwidth is the Bottleneck
+
+**Evidence:**
+- INT8 speedup decreases with larger batches (1.17x → 1.03x)
+- Per-image latency improves with batching (7.73ms → 5.85ms)
+- But memory transfer dominates compute time
+
+**Implication:**
+- Edge devices are memory-bound, not compute-bound for transformers
+- Architecture decisions should minimize data movement
+- Batch processing helps throughput but doesn't scale linearly
+
+### 3. Systematic Profiling Enables Data-Driven Optimization
+
+**Profiling identified:**
+- Specific bottlenecks (87% time in Linear layers)
+- Optimization opportunities (GEMM operations)
+- Hardware constraints (memory bandwidth)
+
+**Result:** Focused optimization efforts on high-impact areas, avoided premature optimization
+
+---
+
+## 📁 Repository Structure
+```
+Swin-Transformer/
+├── README.md                    # This file (optimization overview)
+├── edge-optimization/           # My optimization work
+│   ├── scripts/                # Profiling & optimization scripts
+│   │   ├── profile_baseline.py
+│   │   ├── export_onnx.py
+│   │   ├── benchmark_tensorrt.sh
+│   │   └── visualize_results.py
+│   ├── results/                # Performance data & visualizations
+│   │   ├── results.csv
+│   │   ├── comprehensive_results.png
+│   │   └── nsight_profiles/
+│   └── models/                 # Optimized model artifacts
+│       ├── swin_tiny_fp32.onnx
+│       ├── swin_fp32.trt
+│       └── swin_int8.trt
+└── original/                   # Original Swin Transformer implementation
+    └── [Microsoft's original code]
+```
+
+---
+
+## 🚀 Quick Start
+
+### Prerequisites
+- NVIDIA Jetson Orin with JetPack 6.2
+- PyTorch 2.0+
+- TensorRT 8.6+
+- ONNX Runtime
+
+### Running the Optimization Pipeline
+```bash
+# 1. Profile baseline PyTorch model
+cd edge-optimization/scripts
+python profile_baseline.py
+
+# 2. Export to ONNX
+python export_onnx.py
+
+# 3. Convert to TensorRT and benchmark
+./benchmark_tensorrt.sh
+
+# 4. Generate performance visualizations
+python visualize_results.py
+```
+
+### Expected Output
+```
+PyTorch FP32:   32.0 ms
+TensorRT FP32:   9.07 ms (3.5x speedup)
+TensorRT INT8:   7.73 ms (4.1x speedup)
+```
+
+---
+
+## 🛠️ Technologies
+
+**Profiling:**
+- NVIDIA Nsight Systems (GPU profiling)
+- CUDA Events (layer-wise timing)
+- PyTorch Profiler
+
+**Optimization:**
+- TensorRT (graph optimization + quantization)
+- ONNX (model export format)
+- INT8 post-training quantization
+
+**Deployment:**
+- NVIDIA Jetson Orin
+- JetPack 6.2
+- CUDA 12.2
+
+**Analysis:**
+- Python (NumPy, Pandas)
+- Matplotlib (visualizations)
+
+---
+
+## 🎯 Applications
+
+This optimization methodology applies to:
+
+1. **Autonomous Driving Perception**
+   - BEVFormer (3D object detection)
+   - PETR (transformer-based detection)
+   - Multi-camera perception systems
+
+2. **Vision-Language Models**
+   - Real-time VLM inference on edge
+   - Efficient vision encoding for VLA systems
+   - Multi-modal transformer architectures
+
+3. **Edge AI Deployment**
+   - Resource-constrained devices
+   - Real-time inference requirements
+   - Low-power operation
+
+---
+
+## 🔮 Future Work
+
+- [ ] **Quantization-Aware Training (QAT)** for improved accuracy retention
+- [ ] **Apply to BEVFormer** for 3D perception optimization
+- [ ] **Mixed precision strategies** (FP16 attention, INT8 MLP)
+- [ ] **Structured pruning** for additional speedup
+- [ ] **Knowledge distillation** (large → small model)
+- [ ] **Multi-model deployment** strategies for full VLA pipeline
+
+---
+
+## 📚 References
+
+### Original Work
+This project builds upon Microsoft's Swin Transformer:
+- Paper: [Swin Transformer: Hierarchical Vision Transformer using Shifted Windows](https://arxiv.org/abs/2103.14030)
+- Code: [microsoft/Swin-Transformer](https://github.com/microsoft/Swin-Transformer)
+
+### Citation
+```bibtex
 @inproceedings{liu2021Swin,
   title={Swin Transformer: Hierarchical Vision Transformer using Shifted Windows},
   author={Liu, Ze and Lin, Yutong and Cao, Yue and Hu, Han and Wei, Yixuan and Zhang, Zheng and Lin, Stephen and Guo, Baining},
@@ -200,111 +389,30 @@ Note: <sup>*</sup> indicates multi-scale testing.
   year={2021}
 }
 ```
-## Citing Local Relation Networks (the first full-attention visual backbone)
-```
-@inproceedings{hu2019local,
-  title={Local Relation Networks for Image Recognition},
-  author={Hu, Han and Zhang, Zheng and Xie, Zhenda and Lin, Stephen},
-  booktitle={Proceedings of the IEEE/CVF International Conference on Computer Vision (ICCV)},
-  pages={3464--3473},
-  year={2019}
-}
-```
-## Citing Swin Transformer V2
-```
-@inproceedings{liu2021swinv2,
-  title={Swin Transformer V2: Scaling Up Capacity and Resolution}, 
-  author={Ze Liu and Han Hu and Yutong Lin and Zhuliang Yao and Zhenda Xie and Yixuan Wei and Jia Ning and Yue Cao and Zheng Zhang and Li Dong and Furu Wei and Baining Guo},
-  booktitle={International Conference on Computer Vision and Pattern Recognition (CVPR)},
-  year={2022}
-}
-```
-## Citing SimMIM (a self-supervised approach that enables SwinV2-G)
-```
-@inproceedings{xie2021simmim,
-  title={SimMIM: A Simple Framework for Masked Image Modeling},
-  author={Xie, Zhenda and Zhang, Zheng and Cao, Yue and Lin, Yutong and Bao, Jianmin and Yao, Zhuliang and Dai, Qi and Hu, Han},
-  booktitle={International Conference on Computer Vision and Pattern Recognition (CVPR)},
-  year={2022}
-}
-```
-## Citing SimMIM-data-scaling
-```
-@article{xie2022data,
-  title={On Data Scaling in Masked Image Modeling},
-  author={Xie, Zhenda and Zhang, Zheng and Cao, Yue and Lin, Yutong and Wei, Yixuan and Dai, Qi and Hu, Han},
-  journal={arXiv preprint arXiv:2206.04664},
-  year={2022}
-}
-```
-## Citing Swin-MoE
-```
-@misc{hwang2022tutel,
-      title={Tutel: Adaptive Mixture-of-Experts at Scale}, 
-      author={Changho Hwang and Wei Cui and Yifan Xiong and Ziyue Yang and Ze Liu and Han Hu and Zilong Wang and Rafael Salas and Jithin Jose and Prabhat Ram and Joe Chau and Peng Cheng and Fan Yang and Mao Yang and Yongqiang Xiong},
-      year={2022},
-      eprint={2206.03382},
-      archivePrefix={arXiv}
-}
-```
 
-## Getting Started
+---
 
-- For **Image Classification**, please see [get_started.md](get_started.md) for detailed instructions.
-- For **Object Detection and Instance Segmentation**, please see [Swin Transformer for Object Detection](https://github.com/SwinTransformer/Swin-Transformer-Object-Detection).
-- For **Semantic Segmentation**, please see [Swin Transformer for Semantic Segmentation](https://github.com/SwinTransformer/Swin-Transformer-Semantic-Segmentation).
-- For **Self-Supervised Learning**, please see [Transformer-SSL](https://github.com/SwinTransformer/Transformer-SSL).
-- For **Video Recognition**, please see [Video Swin Transformer](https://github.com/SwinTransformer/Video-Swin-Transformer).
+## 📝 License
 
-## Third-party Usage and Experiments
+This optimization work builds upon the original Swin Transformer implementation, which is licensed under the Apache License 2.0.
 
-***In this pargraph, we cross link third-party repositories which use Swin and report results. You can let us know by raising an issue*** 
+---
 
-(`Note please report accuracy numbers and provide trained models in your new repository to facilitate others to get sense of correctness and model behavior`)
+## 👤 Author
 
-[12/29/2022] Swin Transformers (V2) inference implemented in FasterTransformer: [FasterTransformer](https://github.com/NVIDIA/FasterTransformer/blob/main/docs/swin_guide.md)
+**Your Name**
+- 📧 Email: your.email@example.com
+- 💼 LinkedIn: [your-profile](https://linkedin.com/in/your-profile)
+- 🐙 GitHub: [@yourusername](https://github.com/yourusername)
 
-[06/30/2022] Swin Transformers (V1) inference implemented in FasterTransformer: [FasterTransformer](https://github.com/NVIDIA/FasterTransformer/blob/main/docs/swin_guide.md)
+*Developed as part of research into efficient transformer inference for autonomous driving perception systems.*
 
-[05/12/2022] Swin Transformers (V1) implemented in TensorFlow with the pre-trained parameters ported into them. Find the implementation,
-TensorFlow weights, code example here in [this repository](https://github.com/sayakpaul/swin-transformers-tf/).
+---
 
-[04/06/2022] Swin Transformer for Audio Classification: [Hierarchical Token Semantic Audio Transformer](https://github.com/RetroCirce/HTS-Audio-Transformer).
+## 🙏 Acknowledgments
 
-[12/21/2021] Swin Transformer for StyleGAN: [StyleSwin](https://github.com/microsoft/StyleSwin)
+- Microsoft Research for the original Swin Transformer implementation
+- NVIDIA for TensorRT and Jetson platform
+- Volkswagen Group of America for supporting this research
 
-[12/13/2021] Swin Transformer for Face Recognition: [FaceX-Zoo](https://github.com/JDAI-CV/FaceX-Zoo)
-
-[08/29/2021] Swin Transformer for Image Restoration: [SwinIR](https://github.com/JingyunLiang/SwinIR)
-
-[08/12/2021] Swin Transformer for person reID: [https://github.com/layumi/Person_reID_baseline_pytorch](https://github.com/layumi/Person_reID_baseline_pytorch)
-
-[06/29/2021] Swin-Transformer in PaddleClas and inference based on whl package: [https://github.com/PaddlePaddle/PaddleClas](https://github.com/PaddlePaddle/PaddleClas)
-
-[04/14/2021] Swin for RetinaNet in Detectron: https://github.com/xiaohu2015/SwinT_detectron2.
-
-[04/16/2021] Included in a famous model zoo: https://github.com/rwightman/pytorch-image-models.
-
-[04/20/2021] Swin-Transformer classifier inference using TorchServe: https://github.com/kamalkraj/Swin-Transformer-Serve
-
-## Contributing
-
-This project welcomes contributions and suggestions.  Most contributions require you to agree to a
-Contributor License Agreement (CLA) declaring that you have the right to, and actually do, grant us
-the rights to use your contribution. For details, visit https://cla.opensource.microsoft.com.
-
-When you submit a pull request, a CLA bot will automatically determine whether you need to provide
-a CLA and decorate the PR appropriately (e.g., status check, comment). Simply follow the instructions
-provided by the bot. You will only need to do this once across all repos using our CLA.
-
-This project has adopted the [Microsoft Open Source Code of Conduct](https://opensource.microsoft.com/codeofconduct/).
-For more information see the [Code of Conduct FAQ](https://opensource.microsoft.com/codeofconduct/faq/) or
-contact [opencode@microsoft.com](mailto:opencode@microsoft.com) with any additional questions or comments.
-
-## Trademarks
-
-This project may contain trademarks or logos for projects, products, or services. Authorized use of Microsoft 
-trademarks or logos is subject to and must follow 
-[Microsoft's Trademark & Brand Guidelines](https://www.microsoft.com/en-us/legal/intellectualproperty/trademarks/usage/general).
-Use of Microsoft trademarks or logos in modified versions of this project must not cause confusion or imply Microsoft sponsorship.
-Any use of third-party trademarks or logos are subject to those third-party's policies.
+EOF

@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 from PIL import Image
 from torchvision import transforms
-from models.swin_transformer import SwinTransformer
+from utils import SwinTransformer
 import json
 import urllib
 import time
@@ -248,12 +248,11 @@ def main():
     iterations = 10
     run_with_hooks = False
     apply_quantization = False
-
-    img_path = 'data/test_image/dog.jpeg'
+    img_path = "data/dog.jpeg"
     img = Image.open(img_path).convert('RGB')
     img_tensor = transform(img).unsqueeze(0).to(device)
     
-    model_path = "swin_tiny_patch4_window7_224_22k.pth"
+    model_path = "models/swin_tiny_patch4_window7_224.pth"
     model = load_swin_model(model_path)
     Swin_Transformer_Profiler = Profiler(model=model, device=device, run_with_hooks=run_with_hooks, apply_quantization=apply_quantization)
 
