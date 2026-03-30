@@ -3,7 +3,7 @@
 Systematic optimization of Swin Transformer achieving **4.1x inference speedup** (32ms → 7.73ms) on NVIDIA Jetson Orin through profiling-guided optimization, TensorRT conversion, and INT8 quantization.
 
 !["Performance_Comparison"](./edge_optimization/results/swin_performance_comparison.png)
-## 🎯 Results Summary
+## Results Summary
 
 | Configuration | Latency | Speedup | Throughput | Model Size |
 |--------------|---------|---------|------------|------------|
@@ -12,14 +12,14 @@ Systematic optimization of Swin Transformer achieving **4.1x inference speedup**
 | TensorRT INT8 | 7.73 ms | **4.1x** | **129.4 FPS** | **28 MB** |
 
 **Key Achievements:**
-- ⚡ 4.1x inference speedup enables real-time perception
-- 📦 4x model compression (110MB → 28MB)
-- 🎯 129 FPS throughput (real-time capable for 60+ Hz systems)
-- 🔬 Memory bandwidth bottleneck identified and analyzed
+- 4.1x inference speedup enables real-time perception
+- 4x model compression (110MB → 28MB)
+- 129 FPS throughput (real-time capable for 60+ Hz systems)
+- Memory bandwidth bottleneck identified and analyzed
 
 ---
 
-## 📋 Table of Contents
+## Table of Contents
 
 - [Motivation](#motivation)
 - [Methodology](#methodology)
@@ -33,7 +33,7 @@ Systematic optimization of Swin Transformer achieving **4.1x inference speedup**
 
 ---
 
-## 🎯 Motivation
+## Motivation
 
 Vision-Language-Action (VLA) models are becoming critical for autonomous systems, requiring efficient vision encoding for real-time performance. This project systematically evaluates and optimizes the vision encoding component of VLA frameworks to identify performance bottlenecks and optimization opportunities for deployment on NVIDIA Jetson Orin.
 
@@ -44,7 +44,7 @@ Vision-Language-Action (VLA) models are becoming critical for autonomous systems
 
 ---
 
-## 🔬 Methodology
+## Methodology
 
 ### 1. Baseline Measurement
 **Setup:**
@@ -94,7 +94,7 @@ PyTorch FP32 GPU: 32.0 ms per image (31.3 FPS)
 
 ---
 
-## ⚙️ Optimization Pipeline
+## Optimization Pipeline
 
 ### Stage 1: PyTorch Quantization Exploration
 
@@ -224,7 +224,7 @@ See [edge-optimization/results/](edge-optimization/results/) for:
 
 ---
 
-## 🔑 Key Findings
+## Key Findings
 
 ### 1. Graph Optimization > Quantization on Edge Devices
 
@@ -261,7 +261,7 @@ See [edge-optimization/results/](edge-optimization/results/) for:
 
 ---
 
-## 📁 Repository Structure
+## Repository Structure
 ```
 Swin-Transformer/
 ├── README.md                    # This file (optimization overview)
@@ -285,7 +285,7 @@ Swin-Transformer/
 
 ---
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Prerequisites
 - NVIDIA Jetson Orin with JetPack 6.2
@@ -341,7 +341,7 @@ TensorRT INT8:   7.73 ms (4.1x speedup)
 
 ---
 
-## 🎯 Applications
+## Applications
 
 This optimization methodology applies to:
 
@@ -362,7 +362,7 @@ This optimization methodology applies to:
 
 ---
 
-## 🔮 Future Work
+## Future Work
 
 - [ ] **Quantization-Aware Training (QAT)** for improved accuracy retention
 - [ ] **Apply to BEVFormer** for 3D perception optimization
@@ -373,7 +373,7 @@ This optimization methodology applies to:
 
 ---
 
-## 📚 References
+## References
 
 ### Original Work
 This project builds upon Microsoft's Swin Transformer:
@@ -392,24 +392,24 @@ This project builds upon Microsoft's Swin Transformer:
 
 ---
 
-## 📝 License
+## License
 
 This optimization work builds upon the original Swin Transformer implementation, which is licensed under the Apache License 2.0.
 
 ---
 
-## 👤 Author
+## Author
 
 **Your Name**
-- 📧 Email: your.email@example.com
-- 💼 LinkedIn: [your-profile](https://linkedin.com/in/your-profile)
-- 🐙 GitHub: [@yourusername](https://github.com/yourusername)
+- Email: goyalaarju@gmail.com
+- LinkedIn: [Aarju Goyal](https://www.linkedin.com/in/aarju/)
+- GitHub: [@AarjuGoyal](https://github.com/AarjuGoyal)
 
 *Developed as part of research into efficient transformer inference for autonomous driving perception systems.*
 
 ---
 
-## 🙏 Acknowledgments
+## Acknowledgments
 
 - Microsoft Research for the original Swin Transformer implementation
 - NVIDIA for TensorRT and Jetson platform
