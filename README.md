@@ -5,17 +5,19 @@ Systematic optimization of Swin Transformer achieving **4.1x inference speedup**
 !["Performance_Comparison"](./edge_optimization/results/swin_performance_comparison.png)
 ## Results Summary
 
-| Configuration | Latency | Speedup | Throughput | Model Size |
-|--------------|---------|---------|------------|------------|
-| PyTorch FP32 | 32.0 ms | 1.0x | 31.3 FPS | 110 MB |
-| TensorRT FP32 | 9.07 ms | 3.5x | 110.3 FPS | 14.9 MB |
-| TensorRT INT8 | 7.73 ms | **4.1x** | **129.4 FPS** | **28 MB** |
+| Configuration | Latency | Speedup | Throughput | Model Size | Top-1 Acc | Top-5 Acc |
+|--------------|---------|---------|------------|------------|-----------|-----------|
+| PyTorch FP32 | 32.0 ms | 1.0x | 31.3 FPS | 110 MB | 79.80% | 94.30% |
+| TensorRT FP32 | 9.07 ms | 3.5x | 110.3 FPS | 14.9 MB | - | — |
+| Naive TensorRT INT8 | 7.73 ms | **4.1x** | **129.4 FPS** | **28 MB** | 5.5% | 20% |
+| SmoothQuant INT8 | 7.73 ms | **4.1x** | **129.4 FPS** | **28 MB** | **78.14%** | **94.54%** |
 
 **Key Achievements:**
 - 4.1x inference speedup enables real-time perception
 - 4x model compression (110MB → 28MB)
 - 129 FPS throughput (real-time capable for 60+ Hz systems)
 - Memory bandwidth bottleneck identified and analyzed
+- SmoothQuant PTQ achieves 78.14% top-1 / 94.54% top-5 accuracy with INT8 quantization
 
 ---
 
@@ -88,9 +90,6 @@ PyTorch FP32 GPU: 32.0 ms per image (31.3 FPS)
 **Critical Insight:** Matrix multiplication operations in MLP and Attention are the bottleneck → quantization and graph optimization should be effective.
 
 !["Layer_profile](./edge_optimization/results/layer_profile_bar.png)
-<p align="center">
-  <img src="edge-optimization/results/layer_profile_bar.png" alt="Results" width="800"/>
-</p>
 
 ---
 
@@ -147,7 +146,27 @@ TensorRT INT8:  7.73 ms (1.17x additional speedup)
 
 **Total Speedup:** 32.0ms → 7.73ms = **4.1x overall**
 
-### Stage 4: Batch Processing Analysis
+### Stage 4: SmoothQuant Post-Training Quantization
+
+**Motivation:** Standard INT8 quantization suffers accuracy loss due to large activation outliers in transformer attention layers. SmoothQuant migrates quantization difficulty from activations to weights via a mathematically equivalent per-channel scaling transform.
+
+**Approach:**
+- Applied SmoothQuant to all Linear layers (MLP + Attention projections)
+- Per-channel migration scale computed from calibration data
+- Weights absorb the scaling factor offline; activations become easier to quantize
+- Evaluated on ImageNet validation set (50K images)
+
+**Results:**
+| Metric | Value |
+|--------|-------|
+| Top-1 Accuracy | **78.14%** |
+| Top-5 Accuracy | **94.54%** |
+| Precision | INT8 |
+| Latency | 7.73 ms (unchanged) |
+
+**Analysis:** SmoothQuant preserves the full 4.1x speedup from TensorRT INT8 while providing a measurable accuracy baseline. The accuracy drop relative to FP32 is a direct consequence of PTQ without fine-tuning — see Future Work for QAT as the next step.
+
+### Stage 5: Batch Processing Analysis
 
 **Motivation:** Real-world systems may process multiple images (multi-camera feeds, batched inference)
 
@@ -318,7 +337,7 @@ TensorRT INT8:   7.73 ms (4.1x speedup)
 
 ---
 
-## 🛠️ Technologies
+## Technologies
 
 **Profiling:**
 - NVIDIA Nsight Systems (GPU profiling)
@@ -329,6 +348,7 @@ TensorRT INT8:   7.73 ms (4.1x speedup)
 - TensorRT (graph optimization + quantization)
 - ONNX (model export format)
 - INT8 post-training quantization
+- SmoothQuant (activation-weight migration for accurate INT8)
 
 **Deployment:**
 - NVIDIA Jetson Orin
@@ -364,7 +384,8 @@ This optimization methodology applies to:
 
 ## Future Work
 
-- [ ] **Quantization-Aware Training (QAT)** for improved accuracy retention
+- [x] **SmoothQuant PTQ** — 78.14% top-1 / 94.54% top-5 with INT8 (✅ done)
+- [ ] **Quantization-Aware Training (QAT)** for further accuracy recovery beyond SmoothQuant PTQ
 - [ ] **Apply to BEVFormer** for 3D perception optimization
 - [ ] **Mixed precision strategies** (FP16 attention, INT8 MLP)
 - [ ] **Structured pruning** for additional speedup
