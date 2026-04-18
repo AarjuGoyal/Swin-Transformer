@@ -1,5 +1,7 @@
 import torch
 import torch.onnx
+import sys, os
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..',"original"))
 import onnx
 import onnxruntime as ort
 from models.swin_transformer import SwinTransformer
@@ -48,7 +50,7 @@ def main():
         embed_dim=96, depths=[2, 2, 6, 2], num_heads=[3, 6, 12, 24],
         window_size=7
     )
-    checkpoint = torch.load('swin_tiny_patch4_window7_224.pth', map_location='cpu')
+    checkpoint = torch.load('models/swin_tiny_patch4_window7_224.pth', map_location='cpu')
     model.load_state_dict(checkpoint['model'])
     model.to(device)
     model.eval()
